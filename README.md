@@ -2,6 +2,16 @@
 
 ## Canvas version changes
 
+#### v7.0.1 fix dependency issues 
+
+#### v7.0.0 merges PR to add Angular17 support
+https://github.com/webfactorymk/ng2-canvas-whiteboard/pull/112
+
+- The `CanvasWhiteboardService` and `CanvasWhiteboardShapeService` will now be using `providedIn: 'root'` instead of being provided in the `CanvasWhiteboardModule` directly.
+- Keep this in mind if you need to scope the services differently.
+
+#### v6.0.0 Updates to Angular16
+
 #### v5.0.0 merges PR to add Angular15 support
 https://github.com/webfactorymk/ng2-canvas-whiteboard/pull/110
 
