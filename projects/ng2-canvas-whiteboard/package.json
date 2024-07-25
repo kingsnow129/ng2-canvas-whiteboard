@@ -36,8 +36,8 @@
     "url": "https://github.com/WebFactoryMk/ng2-canvas-whiteboard.git"
   },
   "peerDependencies": {
-    "@angular/common": "^18.1.2",
-    "@angular/core": "^18.1.2",
+    "@angular/common": "^18.0.0",
+    "@angular/core": "^18.0.0",
     "rxjs": "^7.0.0"
   },
   "dependencies": {
