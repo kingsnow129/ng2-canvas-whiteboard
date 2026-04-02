@@ -1,6 +1,6 @@
 {
   "name": "ks-ng2-canvas-whiteboard",
-  "version": "8.1.1",
+  "version": "8.1.3",
   "author": "webfactory",
   "license": "MIT",
   "description": "A Canvas component for Angular which supports free drawing.",
@@ -43,7 +43,7 @@
     "rxjs": "^7.0.0"
   },
   "dependencies": {
-    "lodash-es": "4.17.21",
+    "lodash-es": "4.17.22",
     "tslib": "^2.0.0"
   }
 }
