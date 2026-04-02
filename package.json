@@ -1,6 +1,6 @@
 {
   "name": "ks-ng2-canvas-whiteboard",
-  "version": "8.1.4",
+  "version": "8.1.5",
   "scripts": {
     "build:ng2-canvas-whiteboard:prod": "ng build ng2-canvas-whiteboard --configuration production",
     "test:ng2-canvas-whiteboard": "ng test ng2-canvas-whiteboard",
