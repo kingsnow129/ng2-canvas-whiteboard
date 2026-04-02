@@ -76,11 +76,7 @@ import { cloneDeep, isEqual } from 'lodash-es';
         </button>
       </div>
       <canvas #canvas class="canvas_whiteboard"></canvas>
-      <canvas #incompleteShapesCanvas class="incomplete_shapes_canvas_whiteboard"
-              (mousedown)="canvasUserEvents($event)" (mouseup)="canvasUserEvents($event)"
-              (mousemove)="canvasUserEvents($event)" (mouseout)="canvasUserEvents($event)"
-              (touchstart)="canvasUserEvents($event)" (touchmove)="canvasUserEvents($event)"
-              (touchend)="canvasUserEvents($event)" (touchcancel)="canvasUserEvents($event)"></canvas>
+      <canvas #incompleteShapesCanvas class="incomplete_shapes_canvas_whiteboard"></canvas>
     </div>
   `,
   styles: [DEFAULT_STYLES]
@@ -168,12 +164,22 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
   private _redoStack: string[] = [];
   private _batchUpdates: CanvasWhiteboardUpdate[] = [];
   private _updatesNotDrawn: any = [];
+  private _pendingRemoteUpdates: CanvasWhiteboardUpdate[] = [];
+  private _remoteDrawFrameId: number = null;
 
   private _updateTimeout: any;
 
   private _canvasWhiteboardServiceSubscriptions: Subscription[] = [];
   private _resizeSubscription: Subscription;
   private _registeredShapesSubscription: Subscription;
+  private _canvasBoundingRect: DOMRect;
+  private _canvasScaleWidth = 1;
+  private _canvasScaleHeight = 1;
+  private _boundCanvasKeyDown = (event: any) => this._canvasKeyDown(event);
+  private _boundCanvasUserEvents = (event: any) => this.canvasUserEvents(event);
+  private _canvasUserEventTypes: string[] = [
+    'mousedown', 'mouseup', 'mousemove', 'mouseout', 'touchstart', 'touchmove', 'touchend', 'touchcancel'
+  ];
 
   selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
   canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
@@ -213,6 +219,8 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
    */
   ngAfterViewInit(): void {
     this._calculateCanvasWidthAndHeight();
+    this._refreshCanvasMetrics();
+    this._attachCanvasUserEventListeners();
     this._redrawHistory();
   }
 
@@ -361,7 +369,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
         });
     });
 
-    window.addEventListener('keydown', this._canvasKeyDown.bind(this), false);
+    window.addEventListener('keydown', this._boundCanvasKeyDown, false);
   }
 
   /**
@@ -399,6 +407,20 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     this._incompleteShapesCanvasContext.canvas.width = this.context.canvas.width;
     this._incompleteShapesCanvasContext.canvas.height = this.context.canvas.height;
+  }
+
+  private _attachCanvasUserEventListeners(): void {
+    this.ngZone.runOutsideAngular(() => {
+      this._canvasUserEventTypes.forEach((eventType) => {
+        this._incompleteShapesCanvas.nativeElement.addEventListener(eventType, this._boundCanvasUserEvents, {passive: false});
+      });
+    });
+  }
+
+  private _refreshCanvasMetrics(): void {
+    this._canvasBoundingRect = this.context.canvas.getBoundingClientRect();
+    this._canvasScaleWidth = this._canvasBoundingRect.width / this.context.canvas.width;
+    this._canvasScaleHeight = this._canvasBoundingRect.height / this.context.canvas.height;
   }
 
   /**
@@ -680,6 +702,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     switch (event.type) {
       case 'mousedown':
       case 'touchstart':
+        this._refreshCanvasMetrics();
         this._clientDragging = true;
         this._lastUUID = this._generateUUID();
         updateType = CanvasWhiteboardUpdateType.START;
@@ -719,7 +742,11 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
    * @param eventData
    */
   private _getCanvasEventPosition(eventData: any): CanvasWhiteboardPoint {
-    const canvasBoundingRect = this.context.canvas.getBoundingClientRect();
+    if (!this._canvasBoundingRect) {
+      this._refreshCanvasMetrics();
+    }
+
+    const canvasBoundingRect = this._canvasBoundingRect;
 
     let hasTouches = (eventData.touches && eventData.touches.length) ? eventData.touches[0] : null;
     if (!hasTouches) {
@@ -728,14 +755,11 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     const event = hasTouches ? hasTouches : eventData;
 
-    const scaleWidth = canvasBoundingRect.width / this.context.canvas.width;
-    const scaleHeight = canvasBoundingRect.height / this.context.canvas.height;
-
     let xPosition = (event.clientX - canvasBoundingRect.left);
     let yPosition = (event.clientY - canvasBoundingRect.top);
 
-    xPosition /= this.scaleFactor ? this.scaleFactor : scaleWidth;
-    yPosition /= this.scaleFactor ? this.scaleFactor : scaleHeight;
+    xPosition /= this.scaleFactor ? this.scaleFactor : this._canvasScaleWidth;
+    yPosition /= this.scaleFactor ? this.scaleFactor : this._canvasScaleHeight;
 
     return new CanvasWhiteboardPoint(xPosition / this.context.canvas.width, yPosition / this.context.canvas.height);
   }
@@ -782,6 +806,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
    */
   private _redrawCanvasOnResize(): void {
     this._calculateCanvasWidthAndHeight();
+    this._refreshCanvasMetrics();
     this._redrawHistory();
   }
 
@@ -862,9 +887,6 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
   private _resetIncompleteShapeCanvas(): void {
     this._incompleteShapesCanvasContext.clearRect(0, 0, this._incompleteShapesCanvasContext.canvas.width,
       this._incompleteShapesCanvasContext.canvas.height);
-    this._incompleteShapesCanvasContext.fillStyle = 'transparent';
-    this._incompleteShapesCanvasContext.fillRect(0, 0, this._incompleteShapesCanvasContext.canvas.width,
-      this._incompleteShapesCanvasContext.canvas.height);
   }
 
   /**
@@ -916,7 +938,9 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     this._batchUpdates.push(cloneDeep(update));
     if (!this._updateTimeout) {
       this._updateTimeout = setTimeout(() => {
-        this.onBatchUpdate.emit(this._batchUpdates);
+        this.ngZone.run(() => {
+          this.onBatchUpdate.emit(this._batchUpdates);
+        });
         this._batchUpdates = [];
         this._updateTimeout = null;
       }, this.batchUpdateTimeoutDuration);
@@ -929,14 +953,43 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
    * @param updates The array with Updates.
    */
   drawUpdates(updates: CanvasWhiteboardUpdate[]): void {
-    if (this._canDraw) {
-      this._drawMissingUpdates();
-      updates.forEach((update: CanvasWhiteboardUpdate) => {
-        this._draw(update);
-      });
-    } else {
-      this._updatesNotDrawn = this._updatesNotDrawn.concat(updates);
+    if (!updates || !updates.length) {
+      return;
     }
+
+    if (!this._canDraw) {
+      this._updatesNotDrawn = this._updatesNotDrawn.concat(updates);
+      return;
+    }
+
+    this._pendingRemoteUpdates = this._pendingRemoteUpdates.concat(updates);
+    this._scheduleRemoteDrawFlush();
+  }
+
+  private _scheduleRemoteDrawFlush(): void {
+    if (this._remoteDrawFrameId !== null) {
+      return;
+    }
+
+    this.ngZone.runOutsideAngular(() => {
+      this._remoteDrawFrameId = requestAnimationFrame(() => {
+        this._remoteDrawFrameId = null;
+
+        if (!this._canDraw) {
+          this._updatesNotDrawn = this._updatesNotDrawn.concat(this._pendingRemoteUpdates);
+          this._pendingRemoteUpdates = [];
+          return;
+        }
+
+        const updatesToDraw = this._pendingRemoteUpdates;
+        this._pendingRemoteUpdates = [];
+
+        this._drawMissingUpdates();
+        updatesToDraw.forEach((update: CanvasWhiteboardUpdate) => {
+          this._draw(update);
+        });
+      });
+    });
   }
 
   /**
@@ -1226,6 +1279,15 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
    * Unsubscribe from the service observables
    */
   ngOnDestroy(): void {
+    if (this._remoteDrawFrameId !== null) {
+      cancelAnimationFrame(this._remoteDrawFrameId);
+      this._remoteDrawFrameId = null;
+    }
+
+    window.removeEventListener('keydown', this._boundCanvasKeyDown, false);
+    this._canvasUserEventTypes.forEach((eventType) => {
+      this._incompleteShapesCanvas.nativeElement.removeEventListener(eventType, this._boundCanvasUserEvents, false);
+    });
     this._unsubscribe(this._resizeSubscription);
     this._unsubscribe(this._registeredShapesSubscription);
     this._canvasWhiteboardServiceSubscriptions.forEach(subscription => this._unsubscribe(subscription));

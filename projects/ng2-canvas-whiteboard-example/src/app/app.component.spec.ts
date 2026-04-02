@@ -1,5 +1,6 @@
 import { TestBed, waitForAsync } from '@angular/core/testing';
 import { AppComponent } from './app.component';
+import { CanvasWhiteboardModule } from 'ng2-canvas-whiteboard';
 
 describe('AppComponent', () => {
   beforeEach(waitForAsync(() => {
@@ -7,6 +8,7 @@ describe('AppComponent', () => {
       declarations: [
         AppComponent
       ],
+      imports: [CanvasWhiteboardModule],
     }).compileComponents();
   }));
 
