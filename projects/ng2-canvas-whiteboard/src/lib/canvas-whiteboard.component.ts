@@ -21,6 +21,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { cloneDeep, isEqual } from 'lodash-es';
 
 @Component({
+  standalone: false,
   selector: 'canvas-whiteboard',
   template:
       `

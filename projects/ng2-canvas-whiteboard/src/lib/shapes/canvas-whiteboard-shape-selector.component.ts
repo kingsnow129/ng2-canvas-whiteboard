@@ -11,6 +11,7 @@ import { CanvasWhiteboardShapeOptions } from './canvas-whiteboard-shape-options'
 import { Observable } from 'rxjs';
 
 @Component({
+  standalone: false,
   selector: 'canvas-whiteboard-shape-selector',
   host: {
     '(document:mousedown)': 'closeOnExternalClick($event)',

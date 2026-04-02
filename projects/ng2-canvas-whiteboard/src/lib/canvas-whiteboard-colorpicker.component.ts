@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 
 @Component({
+  standalone: false,
   selector: 'canvas-whiteboard-colorpicker',
   host: {
     '(document:mousedown)': 'closeOnExternalClick($event)',

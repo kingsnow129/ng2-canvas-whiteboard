@@ -8,6 +8,7 @@ import {
 } from 'ng2-canvas-whiteboard';
 
 @Component({
+  standalone: false,
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']

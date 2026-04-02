@@ -13,6 +13,7 @@ import { CanvasWhiteboardPoint } from '../canvas-whiteboard-point.model';
 import { CanvasWhiteboardShapeOptions } from './canvas-whiteboard-shape-options';
 
 @Component({
+  standalone: false,
   selector: 'canvas-whiteboard-shape-preview',
   template: `
     <canvas #canvasWhiteboardShapePreview width="50px" height="50px"
